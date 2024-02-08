@@ -1,5 +1,6 @@
 import configparser
 import os
+import sys
 from instagrapi import Client
 from instagrapi import exceptions
 
@@ -8,26 +9,28 @@ EXPORTS_FOLDER = "exports"
 
 def ensure_exports_folder_exists(username):
     username_folder = os.path.join(EXPORTS_FOLDER, username)
-    if not os.path.exists(username_folder):
-        os.makedirs(username_folder)
+    for export_type in ["followers", "following"]:
+        export_type_folder = os.path.join(username_folder, export_type)
+        if not os.path.exists(export_type_folder):
+            os.makedirs(export_type_folder)
 
 
-def export_usernames_to_file(usernames, username):
+def export_usernames_to_file(usernames, username, export_type):
     ensure_exports_folder_exists(username)
-    filename = get_next_filename(username)
-    filepath = os.path.join(EXPORTS_FOLDER, username, filename)
+    filename = get_next_filename(username, export_type)
+    filepath = os.path.join(EXPORTS_FOLDER, username, export_type, filename)
     with open(filepath, 'w') as file:
         for username in usernames:
             file.write(username + '\n')
-    print(f"Usernames exported to {filepath}")
+    print(f"{len(usernames)} usernames exported to {filepath}\n")
     return filepath
 
 
-def get_next_filename(username):
+def get_next_filename(username, export_type):
     i = 1
     while True:
         filename = f"{i}.txt"
-        filepath = os.path.join(EXPORTS_FOLDER, username, filename)
+        filepath = os.path.join(EXPORTS_FOLDER, username, export_type, filename)
         if not os.path.exists(filepath):
             return filename
         i += 1
@@ -48,7 +51,18 @@ def compare_exports(current_file, previous_file):
     return new_usernames, missing_usernames
 
 
-def main():
+def get_usernames(client, user_id, export_type):
+    if export_type == "following":
+        data = client.user_following(user_id=user_id)
+    elif export_type == "followers":
+        data = client.user_followers(user_id=user_id)
+    else:
+        raise ValueError("Invalid export type")
+
+    return [f.username for f in data.values()]
+
+
+def main(user_to_track):
     if not os.path.exists('creds.ini'):
         print("Run setup.py first to provide Instagram credentials.")
         return
@@ -69,29 +83,44 @@ def main():
         print("Please wait a few minutes before trying again")
         return
 
-    user_id = cl.user_id_from_username(username)
-    following = cl.user_following(user_id=user_id)
-    usernames = [f.username for f in following.values()]
+    user_id = cl.user_id_from_username(user_to_track)
 
-    current_file = export_usernames_to_file(usernames, username)
+    for export_type in ["followers", "following"]:
+        usernames = get_usernames(cl, user_id, export_type)
+        current_file = export_usernames_to_file(usernames, user_to_track, export_type)
 
-    if current_file == os.path.join(EXPORTS_FOLDER, username, "1.txt"):
-        print("First export")
-    else:
-        previous_number = int(current_file.split('/')[-1].split('.')[0]) - 1
-        previous_file = os.path.join(EXPORTS_FOLDER, username, f"{previous_number}.txt")
-        new_usernames, missing_usernames = compare_exports(current_file, previous_file)
-        if not (new_usernames or missing_usernames):
-            print("There was no change in the following list.")
-        if new_usernames:
-            print(f"{username} followed these accounts:")
-            for new_username in new_usernames:
-                print(new_username)
-        if missing_usernames:
-            print(f"{username} unfollowed these accounts:")
-            for missing_username in missing_usernames:
-                print(missing_username)
+        if current_file == os.path.join(EXPORTS_FOLDER, user_to_track, export_type, "1.txt"):
+            print(f"First export of {export_type}: {len(usernames)+1} usernames exported")
+        else:
+            previous_number = int(current_file.split('/')[-1].split('.')[0]) - 1
+            previous_file = os.path.join(EXPORTS_FOLDER, user_to_track, export_type, f"{previous_number}.txt")
+            new_usernames, missing_usernames = compare_exports(current_file, previous_file)
+            if not (new_usernames or missing_usernames):
+                print(f"There was no change in the {export_type} list.")
+            if new_usernames:
+                if export_type == "followers":
+                    print(f"{user_to_track} gained these {export_type}:")
+                    for new_username in new_usernames:
+                        print(new_username)
+                else:
+                    print(f"{user_to_track} is now {export_type}:")
+                    for new_username in new_usernames:
+                        print(new_username)
+            print("")
+            if missing_usernames:
+                if export_type == "followers":
+                    print(f"{user_to_track} lost these {export_type}:")
+                    for missing_username in missing_usernames:
+                        print(missing_username)
+                else:
+                    print(f"{user_to_track} stopped {export_type}:")
+                    for missing_username in missing_usernames:
+                        print(missing_username)
+        print("")
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) != 2:
+        print("Usage: python3 main.py <username>")
+        sys.exit(1)
+    main(sys.argv[1])
