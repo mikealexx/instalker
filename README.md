@@ -12,7 +12,7 @@ Instalker is an open-source OSINT (Open Source Intelligence) project designed to
 
 1. Clone the Instalker repository to your local machine:
    ```bash
-   git clone https://github.com/yourusername/instalker.git
+   git clone https://github.com/mikealexx/instalker.git
 2. Navigate to the project directory:
    ```bash
    cd instalker
@@ -24,7 +24,7 @@ Instalker is an open-source OSINT (Open Source Intelligence) project designed to
 
 1. Enter your Instagram account credentials by running:
    ```bash
-   python3 config.py
+   python3 setup.py
    ```
    Only necessary at first run or when changing the credentials.
 
@@ -35,23 +35,35 @@ Instalker is an open-source OSINT (Open Source Intelligence) project designed to
 
    Replace `<instagram_username>` with the username of the Instagram account you wish to analyze.
 
-##Example
+## Example
 
 ```bash
-git clone <dsadasdaa>
+git clone https://github.com/mikealexx/instalker.git
 cd instalker
-python3 config.py
+python3 setup.py
 python3 instalker.py _mikealexx
 ```
 
-##Disclamer
+## Security and Credentials
+
+Instalker requires Instagram API credentials for accessing Instagram data. These credentials are stored locally in the `creds.ini` file within the project directory. It's important to note that Instalker does not share or use these credentials publicly.
+
+### Protection of Credentials
+
+The security of your credentials is of utmost importance. Instalker ensures that your credentials are securely stored locally and are not exposed to the public. However, it's recommended to take additional precautions to protect your credentials, such as restricting access to the `creds.ini` file and avoiding sharing it with unauthorized individuals.
+
+### Responsible Usage
+
+It's essential to use Instalker responsibly and in compliance with Instagram's terms of service. Avoid sharing your credentials or using Instalker for unauthorized or unethical purposes. By using Instalker, you agree to take full responsibility for the security and appropriate usage of your credentials.
+
+## Disclamer
 
 Instalker is intended for educational and research purposes only. The developers do not endorse any unauthorized or unethical use of this tool. Users are responsible for complying with Instagram's terms of service and respecting the privacy of others.
 
-##Contributions
+## Contributions
 
 Contributions to Instalker are welcome! If you have suggestions for improvements, bug fixes, or new features, please feel free to open an issue or submit a pull request.
 
-##License
+## License
 
 This project is licensed under the MIT License. See the [License](LICENSE) file for details.
