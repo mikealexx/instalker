@@ -1,10 +1,11 @@
 import configparser
 import os
 import sys
-from instagrapi import Client
-from instagrapi import exceptions
+import shutil
+from instagrapi import Client, exceptions
 
 EXPORTS_FOLDER = "exports"
+CREDS_FILE = 'creds.ini'
 
 
 def ensure_exports_folder_exists(username):
@@ -62,65 +63,76 @@ def get_usernames(client, user_id, export_type):
     return [f.username for f in data.values()]
 
 
-def main(user_to_track):
-    if not os.path.exists('creds.ini'):
+def clean_user_exports(username):
+    user_folder = os.path.join(EXPORTS_FOLDER, username)
+    if os.path.exists(user_folder):
+        shutil.rmtree(user_folder)
+        print(f"Exports for user '{username}' cleaned successfully.")
+    else:
+        print(f"No exports found for user '{username}'.")
+
+
+def clean_all_exports():
+    if os.path.exists(EXPORTS_FOLDER):
+        shutil.rmtree(EXPORTS_FOLDER)
+        print("All exports cleaned successfully.")
+    else:
+        print("No exports found.")
+
+
+def clean_credentials():
+    if os.path.exists(CREDS_FILE):
+        os.remove(CREDS_FILE)
+        print("Credentials cleaned successfully.")
+    else:
+        print("No credentials found.")
+
+
+def main(username):
+    if not os.path.exists(CREDS_FILE):
         print("Run setup.py first to provide Instagram credentials.")
         return
 
     config = configparser.ConfigParser()
-    config.read('creds.ini')
-    username = config['instagram'].get('username', '')
+    config.read(CREDS_FILE)
+    username_saved = config['instagram'].get('username', '')
     password = config['instagram'].get('password', '')
 
-    if not (username and password):
+    if not (username_saved and password):
         print("Invalid creds.ini file. Please run setup.py again.")
         return
 
     cl = Client()
     try:
-        cl.login(username, password)
+        cl.login(username_saved, password)
     except exceptions.PleaseWaitFewMinutes:
         print("Please wait a few minutes before trying again")
         return
 
-    user_id = cl.user_id_from_username(user_to_track)
+    user_id = cl.user_id_from_username(username)
 
     for export_type in ["followers", "following"]:
         usernames = get_usernames(cl, user_id, export_type)
-        current_file = export_usernames_to_file(usernames, user_to_track, export_type)
-
-        if current_file == os.path.join(EXPORTS_FOLDER, user_to_track, export_type, "1.txt"):
-            print(f"First export of {export_type}: {len(usernames)+1} usernames exported")
-        else:
-            previous_number = int(current_file.split('/')[-1].split('.')[0]) - 1
-            previous_file = os.path.join(EXPORTS_FOLDER, user_to_track, export_type, f"{previous_number}.txt")
-            new_usernames, missing_usernames = compare_exports(current_file, previous_file)
-            if not (new_usernames or missing_usernames):
-                print(f"There was no change in the {export_type} list.")
-            if new_usernames:
-                if export_type == "followers":
-                    print(f"{user_to_track} gained these {export_type}:")
-                    for new_username in new_usernames:
-                        print(new_username)
-                else:
-                    print(f"{user_to_track} is now {export_type}:")
-                    for new_username in new_usernames:
-                        print(new_username)
-            print("")
-            if missing_usernames:
-                if export_type == "followers":
-                    print(f"{user_to_track} lost these {export_type}:")
-                    for missing_username in missing_usernames:
-                        print(missing_username)
-                else:
-                    print(f"{user_to_track} stopped {export_type}:")
-                    for missing_username in missing_usernames:
-                        print(missing_username)
-        print("")
+        export_usernames_to_file(usernames, username, export_type)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python3 main.py <username>")
+    args = sys.argv[1:]
+    if not args:
+        print("""Usage: python3 main.py <flag>
+Flags:
+    -u <username>: Analyze followers/following usernames of the specified <username>.
+    -cu <username>: Clean the information gathered about the specified <username>.
+    -cA: Clean all usernames' exports.
+    -cC: Clean credentials.""")
+    elif args[0] == '-u' and len(args) == 2:
+        main(args[1])
+    elif args[0] == '-cu' and len(args) == 2:
+        clean_user_exports(args[1])
+    elif args[0] == '-cA' and len(args) == 1:
+        clean_all_exports()
+    elif args[0] == '-cC' and len(args) == 1:
+        clean_credentials()
+    else:
+        print("Invalid flag or usage. See usage instructions.")
         sys.exit(1)
-    main(sys.argv[1])
